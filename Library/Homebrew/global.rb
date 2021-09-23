@@ -1,22 +1,16 @@
-# typed: false
+# typed: true
 # frozen_string_literal: true
 
-require_relative "load_path"
+require_relative "startup"
 
 require "English"
+require "fileutils"
 require "json"
 require "json/add/exception"
-require "pathname"
 require "ostruct"
 require "pp"
 require "forwardable"
 
-require "rbconfig"
-
-RUBY_PATH = Pathname.new(RbConfig.ruby).freeze
-RUBY_BIN = RUBY_PATH.dirname.freeze
-
-require "rubygems"
 # Only require "core_ext" here to ensure we're only requiring the minimum of
 # what we need.
 require "active_support/core_ext/object/blank"
@@ -39,8 +33,6 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.irregular "is", "are"
   inflect.irregular "it", "they"
 end
-
-require "utils/sorbet"
 
 HOMEBREW_BOTTLE_DEFAULT_DOMAIN = ENV["HOMEBREW_BOTTLE_DEFAULT_DOMAIN"]
 HOMEBREW_BREW_DEFAULT_GIT_REMOTE = ENV["HOMEBREW_BREW_DEFAULT_GIT_REMOTE"]
@@ -72,20 +64,17 @@ HOMEBREW_PULL_API_REGEX =
   %r{https://api\.github\.com/repos/([\w-]+)/([\w-]+)?/pulls/(\d+)}.freeze
 HOMEBREW_PULL_OR_COMMIT_URL_REGEX =
   %r[https://github\.com/([\w-]+)/([\w-]+)?/(?:pull/(\d+)|commit/[0-9a-fA-F]{4,40})].freeze
-HOMEBREW_RELEASES_URL_REGEX =
-  %r{https://github\.com/([\w-]+)/([\w-]+)?/releases/download/(.+)}.freeze
+HOMEBREW_BOTTLES_EXTNAME_REGEX = /\.([a-z0-9_]+)\.bottle\.(?:(\d+)\.)?tar\.gz$/.freeze
 
-require "fileutils"
-
+require "env_config"
+require "compat/early" unless Homebrew::EnvConfig.no_compat?
 require "os"
-require "os/global"
 require "messages"
+require "default_prefix"
 
 module Homebrew
   extend FileUtils
 
-  DEFAULT_PREFIX ||= HOMEBREW_DEFAULT_PREFIX
-  DEFAULT_REPOSITORY ||= HOMEBREW_DEFAULT_REPOSITORY
   DEFAULT_CELLAR = "#{DEFAULT_PREFIX}/Cellar"
   DEFAULT_MACOS_CELLAR = "#{HOMEBREW_DEFAULT_PREFIX}/Cellar"
   DEFAULT_MACOS_ARM_CELLAR = "#{HOMEBREW_MACOS_ARM_DEFAULT_PREFIX}/Cellar"
@@ -117,10 +106,8 @@ module Homebrew
   end
 end
 
-require "env_config"
-
-require "config"
 require "context"
+require "extend/git_repository"
 require "extend/pathname"
 require "extend/predicable"
 require "extend/module"
@@ -147,4 +134,7 @@ require "official_taps"
 require "tap"
 require "tap_constants"
 
-require "compat" unless Homebrew::EnvConfig.no_compat?
+# Enables `patchelf.rb` write support.
+HOMEBREW_PATCHELF_RB_WRITE = ENV["HOMEBREW_NO_PATCHELF_RB_WRITE"].blank?.freeze
+
+require "compat/late" unless Homebrew::EnvConfig.no_compat?

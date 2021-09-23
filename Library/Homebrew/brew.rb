@@ -2,8 +2,6 @@
 # frozen_string_literal: true
 
 if ENV["HOMEBREW_STACKPROF"]
-  require_relative "utils/gems"
-  Homebrew.setup_gem_environment!
   require "stackprof"
   StackProf.start(mode: :wall, raw: true)
 end
@@ -72,6 +70,7 @@ begin
 
   ARGV.delete_at(help_cmd_index) if help_cmd_index
 
+  require "cli/parser"
   args = Homebrew::CLI::Parser.new.parse(ARGV.dup.freeze, ignore_invalid_options: true)
   Context.current = args.context
 
@@ -92,6 +91,15 @@ begin
     internal_cmd ||= begin
       internal_dev_cmd = Commands.valid_internal_dev_cmd?(cmd)
       if internal_dev_cmd && !Homebrew::EnvConfig.developer?
+        if ENV["HOMEBREW_DEV_CMD_RUN"].blank?
+          opoo <<~MESSAGE
+            #{Tty.bold}#{cmd}#{Tty.reset} is a developer command, so
+            Homebrew's developer mode has been automatically turned on.
+            To turn developer mode off, run #{Tty.bold}brew developer off#{Tty.reset}
+
+          MESSAGE
+        end
+
         Homebrew::Settings.write "devcmdrun", true
         ENV["HOMEBREW_DEV_CMD_RUN"] = "1"
       end
@@ -111,8 +119,7 @@ begin
   # - a help flag is passed AND a command is matched
   # - a help flag is passed AND there is no command specified
   # - no arguments are passed
-  # - if cmd is Cask, let Cask handle the help command instead
-  if (empty_argv || help_flag) && cmd != "cask"
+  if empty_argv || help_flag
     require "help"
     Homebrew::Help.help cmd, remaining_args: args.remaining, empty_argv: empty_argv
     # `Homebrew::Help.help` never returns, except for unknown commands.

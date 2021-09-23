@@ -62,7 +62,7 @@ class Caveats
     if f.bin.directory? || f.sbin.directory?
       s << <<~EOS
 
-        If you need to have #{f.name} first in your PATH run:
+        If you need to have #{f.name} first in your PATH, run:
       EOS
       s << "  #{Utils::Shell.prepend_path_in_profile(f.opt_bin.to_s)}\n" if f.bin.directory?
       s << "  #{Utils::Shell.prepend_path_in_profile(f.opt_sbin.to_s)}\n" if f.sbin.directory?
@@ -152,13 +152,19 @@ class Caveats
   end
 
   def plist_caveats
-    return unless f.plist_manual
+    return if !f.plist_manual && !f.service?
+
+    command = if f.service?
+      f.service.manual_command
+    else
+      f.plist_manual
+    end
 
     # Default to brew services not being supported. macOS overrides this behavior.
     <<~EOS
       #{Formatter.warning("Warning:")} #{f.name} provides a launchd plist which can only be used on macOS!
       You can manually execute the service instead with:
-        #{f.plist_manual}
+        #{command}
     EOS
   end
 

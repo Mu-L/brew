@@ -1,15 +1,6 @@
 # typed: false
 # frozen_string_literal: true
 
-# Silence compatibility warning.
-begin
-  old_verbosity = $VERBOSE
-  $VERBOSE = nil
-  require "parser/current"
-ensure
-  $VERBOSE = old_verbosity
-end
-
 require "extend/string"
 require "rubocops/shared/helper_functions"
 
@@ -126,7 +117,17 @@ module RuboCop
           parameters(call).first
         # sha256 is passed as a key-value pair in bottle blocks
         elsif parameters(call).first.hash_type?
-          parameters(call).first.keys.first
+          if parameters(call).first.keys.first.value == :cellar
+            # sha256 :cellar :any, :tag "hexdigest"
+            parameters(call).first.values.last
+          elsif parameters(call).first.keys.first.is_a?(RuboCop::AST::SymbolNode)
+            # sha256 :tag "hexdigest"
+            parameters(call).first.values.first
+          else
+            # Legacy bottle block syntax
+            # sha256 "hexdigest" => :tag
+            parameters(call).first.keys.first
+          end
         end
       end
 
@@ -145,7 +146,7 @@ module RuboCop
 
       # Returns the formula tap.
       def formula_tap
-        return unless match_obj = @file_path.match(%r{/(homebrew-\w+)/})
+        return unless (match_obj = @file_path.match(%r{/(homebrew-\w+)/}))
 
         match_obj[1]
       end

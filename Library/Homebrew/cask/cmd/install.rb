@@ -3,21 +3,11 @@
 
 module Cask
   class Cmd
-    # Implementation of the `brew cask install` command.
+    # Cask implementation of the `brew install` command.
     #
     # @api private
     class Install < AbstractCommand
       extend T::Sig
-
-      sig { override.returns(T.nilable(T.any(Integer, Symbol))) }
-      def self.min_named
-        :cask
-      end
-
-      sig { returns(String) }
-      def self.description
-        "Installs the given <cask>."
-      end
 
       OPTIONS = [
         [:switch, "--skip-cask-deps", {
@@ -48,6 +38,7 @@ module Cask
           skip_cask_deps: args.skip_cask_deps?,
           require_sha:    args.require_sha?,
           quarantine:     args.quarantine?,
+          quiet:          args.quiet?,
         )
       end
 
@@ -58,7 +49,8 @@ module Cask
         binaries: nil,
         skip_cask_deps: nil,
         require_sha: nil,
-        quarantine: nil
+        quarantine: nil,
+        quiet: nil
       )
         odie "Installing casks is supported only on macOS" unless OS.mac?
 

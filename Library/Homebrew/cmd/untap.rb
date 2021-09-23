@@ -14,6 +14,8 @@ module Homebrew
       description <<~EOS
         Remove a tapped formula repository.
       EOS
+      switch "-f", "--force",
+             description: "Untap even if formulae or casks from this tap are currently installed."
 
       named_args :tap, min: 1
     end
@@ -23,7 +25,7 @@ module Homebrew
     args = untap_args.parse
 
     args.named.to_installed_taps.each do |tap|
-      odie "Untapping #{tap} is not allowed" if tap.core_tap?
+      odie "Untapping #{tap} is not allowed" if tap.core_tap? && ENV["HOMEBREW_INSTALL_FROM_API"].blank?
 
       installed_tap_formulae = Formula.installed.select { |formula| formula.tap == tap }
       installed_tap_casks = Cask::Caskroom.casks.select { |cask| cask.tap == tap }

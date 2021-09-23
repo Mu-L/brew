@@ -13,8 +13,6 @@ module Homebrew
     Homebrew::CLI::Parser.new do
       description <<~EOS
         Check for typechecking errors using Sorbet.
-
-        Not (yet) working on Apple Silicon.
       EOS
       switch "--fix",
              description: "Automatically fix type errors."
@@ -23,8 +21,8 @@ module Homebrew
       switch "--update",
              description: "Update RBI files."
       switch "--suggest-typed",
-             description: "Try upgrading `typed` sigils.",
-             depends_on:  "--update"
+             depends_on:  "--update",
+             description: "Try upgrading `typed` sigils."
       switch "--fail-if-not-changed",
              description: "Return a failing status code if all gems are up to date " \
                           "and gem definitions do not need a tapioca update."
@@ -44,26 +42,27 @@ module Homebrew
 
   sig { void }
   def typecheck
-    # TODO: update description above if removing this.
-    if Hardware::CPU.arm? || Hardware::CPU.in_rosetta2?
-      raise UsageError, "not (yet) working on Apple Silicon or Rosetta 2!"
-    end
-
     args = typecheck_args.parse
 
-    Homebrew.install_bundler_gems!
+    Homebrew.install_bundler_gems!(groups: ["sorbet"])
 
     HOMEBREW_LIBRARY_PATH.cd do
       if args.update?
+        excluded_gems = [
+          "did_you_mean", # RBI file is already provided by Sorbet
+        ]
+
         ohai "Updating Tapioca RBI files..."
-        system "bundle", "exec", "tapioca", "sync"
+        system "bundle", "exec", "tapioca", "gem", "--exclude", *excluded_gems
+        system "bundle", "exec", "parlour"
         system "bundle", "exec", "srb", "rbi", "hidden-definitions"
         system "bundle", "exec", "srb", "rbi", "todo"
 
         if args.suggest_typed?
           result = system_command(
             "bundle",
-            args:         ["exec", "--", "srb", "tc", "--suggest-typed", "--typed=strict", "--error-white-list=7022"],
+            args:         ["exec", "--", "srb", "tc", "--suggest-typed", "--typed=strict",
+                           "--isolate-error-code=7022"],
             print_stderr: false,
           )
 
@@ -97,12 +96,12 @@ module Homebrew
       end
 
       srb_exec = %w[bundle exec srb tc]
-      srb_exec << "--error-black-list" << "5061"
+
       srb_exec << "--quiet" if args.quiet?
 
       if args.fix?
         # Auto-correcting method names is almost always wrong.
-        srb_exec << "--error-black-list" << "7003"
+        srb_exec << "--suppress-error-code" << "7003"
 
         srb_exec << "--autocorrect"
       end

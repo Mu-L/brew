@@ -28,13 +28,6 @@ def with_monkey_patch
     define_method(:parse_symbol_spec) { |*| }
   end
 
-  if defined?(DependencyCollector::Compat)
-    DependencyCollector::Compat.class_eval do
-      alias_method :old_parse_string_spec, :parse_string_spec if method_defined?(:parse_string_spec)
-      define_method(:parse_string_spec) { |*| }
-    end
-  end
-
   yield
 ensure
   BottleSpecification.class_eval do
@@ -64,15 +57,6 @@ ensure
       undef :old_parse_symbol_spec
     end
   end
-
-  if defined?(DependencyCollector::Compat)
-    DependencyCollector::Compat.class_eval do
-      if method_defined?(:old_parse_string_spec)
-        alias_method :parse_string_spec, :old_parse_string_spec
-        undef :old_parse_string_spec
-      end
-    end
-  end
 end
 
 module Homebrew
@@ -83,9 +67,11 @@ module Homebrew
   sig { returns(CLI::Parser) }
   def extract_args
     Homebrew::CLI::Parser.new do
+      usage_banner "`extract` [<--version>`=`] [<--force>] <formula> <tap>"
       description <<~EOS
         Look through repository history to find the most recent version of <formula> and
-        create a copy in <tap>`/Formula/`<formula>`@`<version>`.rb`. If the tap is not
+        create a copy in <tap>. Specifically, the command will create the new
+        formula file at <tap>`/Formula/`<formula>`@`<version>`.rb`. If the tap is not
         installed yet, attempt to install/clone the tap before continuing. To extract
         a formula from a tap that is not `homebrew/core` use its fully-qualified form of
         <user>`/`<repo>`/`<formula>.
@@ -95,7 +81,7 @@ module Homebrew
       switch "-f", "--force",
              description: "Overwrite the destination formula if it already exists."
 
-      named_args :formula, number: 2
+      named_args [:formula, :tap], number: 2
     end
   end
 
@@ -200,7 +186,7 @@ module Homebrew
     # Remove bottle blocks, they won't work.
     result.sub!(/  bottle do.+?end\n\n/m, "") if destination_tap != source_tap
 
-    path = destination_tap.path/"Formula/#{name}@#{version}.rb"
+    path = destination_tap.path/"Formula/#{name}@#{version.to_s.downcase}.rb"
     if path.exist?
       unless args.force?
         odie <<~EOS
@@ -212,8 +198,8 @@ module Homebrew
       odebug "Overwriting existing formula at #{path}"
       path.delete
     end
-    ohai "Writing formula for #{name} from revision #{rev} to:"
-    puts path
+    ohai "Writing formula for #{name} from revision #{rev} to:", path
+    path.dirname.mkpath
     path.write result
   end
 
@@ -224,6 +210,6 @@ module Homebrew
     contents = Utils::Git.last_revision_of_file(repo, file, before_commit: rev)
     contents.gsub!("@url=", "url ")
     contents.gsub!("require 'brewkit'", "require 'formula'")
-    with_monkey_patch { Formulary.from_contents(name, file, contents) }
+    with_monkey_patch { Formulary.from_contents(name, file, contents, ignore_errors: true) }
   end
 end

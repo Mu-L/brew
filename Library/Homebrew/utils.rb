@@ -1,6 +1,8 @@
 # typed: false
 # frozen_string_literal: true
 
+require "time"
+
 require "utils/analytics"
 require "utils/curl"
 require "utils/fork"
@@ -11,13 +13,11 @@ require "utils/git_repository"
 require "utils/github"
 require "utils/inreplace"
 require "utils/link"
-require "utils/livecheck_formula"
 require "utils/popen"
 require "utils/repology"
 require "utils/svn"
 require "utils/tty"
 require "tap_constants"
-require "time"
 
 module Homebrew
   extend Context
@@ -112,6 +112,24 @@ module Kernel
     puts sput
   end
 
+  def ohai_stdout_or_stderr(message, *sput)
+    if $stdout.tty?
+      ohai(message, *sput)
+    else
+      $stderr.puts(ohai_title(message))
+      $stderr.puts(sput)
+    end
+  end
+
+  def puts_stdout_or_stderr(*message)
+    message = "\n" if message.empty?
+    if $stdout.tty?
+      puts(message)
+    else
+      $stderr.puts(message)
+    end
+  end
+
   def odebug(title, *sput, always_display: false)
     debug = if respond_to?(:debug)
       debug?
@@ -189,7 +207,7 @@ module Kernel
 
     # Don't throw deprecations at all for cached, .brew or .metadata files.
     return if backtrace.any? do |line|
-      next true if line.include?(HOMEBREW_CACHE)
+      next true if line.include?(HOMEBREW_CACHE.to_s)
       next true if line.include?("/.brew/")
       next true if line.include?("/.metadata/")
 
@@ -206,7 +224,7 @@ module Kernel
     tap_message = T.let(nil, T.nilable(String))
 
     backtrace.each do |line|
-      next unless match = line.match(HOMEBREW_TAP_PATH_REGEX)
+      next unless (match = line.match(HOMEBREW_TAP_PATH_REGEX))
 
       tap = Tap.fetch(match[:user], match[:repo])
       tap_message = +"\nPlease report this issue to the #{tap} tap (not Homebrew/brew or Homebrew/core)"
@@ -383,12 +401,6 @@ module Kernel
     end
   end
 
-  # Returns array of architectures that the given command or library is built for.
-  def archs_for_command(cmd)
-    cmd = which(cmd) unless Pathname.new(cmd).absolute?
-    Pathname.new(cmd).archs
-  end
-
   def ignore_interrupts(_opt = nil)
     # rubocop:disable Style/GlobalVars
     $ignore_interrupts_nesting_level = 0 unless defined?($ignore_interrupts_nesting_level)
@@ -446,6 +458,13 @@ module Kernel
     rescue ArgumentError
       onoe "The following PATH component is invalid: #{p}"
     end.uniq.compact
+  end
+
+  def parse_author!(author)
+    /^(?<name>[^<]+?)[ \t]*<(?<email>[^>]+?)>$/ =~ author
+    raise UsageError, "Unable to parse name and email." if name.blank? && email.blank?
+
+    { name: name, email: email }
   end
 
   def disk_usage_readable(size_in_bytes)

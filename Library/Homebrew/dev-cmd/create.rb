@@ -1,4 +1,4 @@
-# typed: false
+# typed: true
 # frozen_string_literal: true
 
 require "formula"
@@ -85,11 +85,11 @@ module Homebrew
   end
 
   def create_cask(args:)
-    url = args.named.first
+    raise UsageError, "The `--set-name` flag is required for creating casks." if args.set_name.blank?
 
-    if (token = args.set_name).nil?
-      raise UsageError, "The `--set-name` flag is required for creating casks."
-    end
+    url = args.named.first
+    name = args.set_name
+    token = Cask::Utils.token_from(args.set_name)
 
     cask_tap = Tap.fetch(args.tap || "homebrew/cask")
     raise TapUnavailableError, args.tap unless cask_tap.installed?
@@ -101,7 +101,7 @@ module Homebrew
     version = if args.set_version
       Version.create(args.set_version)
     else
-      Version.detect(url.gsub(token, ""))
+      Version.detect(url.gsub(token, "").gsub(/x86(_64)?/, ""))
     end
 
     interpolated_url, sha256 = if version.null?
@@ -125,7 +125,7 @@ module Homebrew
         sha256 "#{sha256}"
 
         url "#{interpolated_url}"
-        name ""
+        name "#{name}"
         desc ""
         homepage ""
 
@@ -145,7 +145,7 @@ module Homebrew
     fc.tap = Tap.fetch(args.tap || "homebrew/core")
     raise TapUnavailableError, args.tap unless fc.tap.installed?
 
-    fc.url = args.named.first # Pull the first (and only) url from ARGV
+    fc.url = args.named.first # Pull the first (and only) URL from ARGV
 
     fc.mode = if args.autotools?
       :autotools
@@ -179,8 +179,8 @@ module Homebrew
     # Check for disallowed formula, or names that shadow aliases,
     # unless --force is specified.
     unless args.force?
-      if reason = MissingFormula.disallowed_reason(fc.name)
-        raise <<~EOS
+      if (reason = MissingFormula.disallowed_reason(fc.name))
+        odie <<~EOS
           The formula '#{fc.name}' is not allowed to be created.
           #{reason}
           If you really want to create this formula use `--force`.
@@ -189,7 +189,7 @@ module Homebrew
 
       if Formula.aliases.include? fc.name
         realname = Formulary.canonical_name(fc.name)
-        raise <<~EOS
+        odie <<~EOS
           The formula '#{realname}' is already aliased to '#{fc.name}'.
           Please check that you are not creating a duplicate.
           To force creation use `--force`.

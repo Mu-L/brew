@@ -18,11 +18,13 @@ module Homebrew
           - macOS ARM: `#{HOMEBREW_MACOS_ARM_DEFAULT_PREFIX}`
           - Linux: `#{HOMEBREW_LINUX_DEFAULT_PREFIX}`
 
-        If <formula> is provided, display the location in the Cellar where <formula>
-        is or would be installed.
+        If <formula> is provided, display the location where <formula> is or would be installed.
       EOS
       switch "--unbrewed",
              description: "List files in Homebrew's prefix not installed by Homebrew."
+      switch "--installed",
+             description: "Outputs nothing and returns a failing status code if <formula> is not installed."
+      conflicts "--unbrewed", "--installed"
 
       named_args :formula
     end
@@ -31,6 +33,8 @@ module Homebrew
   def __prefix
     args = __prefix_args.parse
 
+    raise UsageError, "`--installed` requires a formula argument." if args.installed? && args.no_named?
+
     if args.unbrewed?
       raise UsageError, "`--unbrewed` does not take a formula argument." unless args.no_named?
 
@@ -38,9 +42,24 @@ module Homebrew
     elsif args.no_named?
       puts HOMEBREW_PREFIX
     else
-      puts args.named.to_resolved_formulae.map { |f|
-        f.opt_prefix.exist? ? f.opt_prefix : f.latest_installed_prefix
-      }
+      formulae = args.named.to_resolved_formulae
+      prefixes = formulae.map do |f|
+        next nil if args.installed? && !f.opt_prefix.exist?
+
+        # this case will be short-circuited by brew.sh logic for a single formula
+        f.opt_prefix
+      end.compact
+      puts prefixes
+      if args.installed?
+        missing_formulae = formulae.reject(&:optlinked?)
+                                   .map(&:name)
+        return if missing_formulae.blank?
+
+        raise NotAKegError, <<~EOS
+          The following formulae are not installed:
+          #{missing_formulae.join(" ")}
+        EOS
+      end
     end
   end
 
@@ -55,6 +74,7 @@ module Homebrew
     lib/gio/*
     lib/node_modules/*
     lib/python[23].[0-9]/*
+    lib/python3.[0-9][0-9]/*
     lib/pypy/*
     lib/pypy3/*
     lib/ruby/gems/[12].*
@@ -65,6 +85,8 @@ module Homebrew
     share/pypy3/*
     share/info/dir
     share/man/whatis
+    share/mime/*
+    texlive/*
   ].freeze
 
   def list_unbrewed

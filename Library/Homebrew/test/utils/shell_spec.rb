@@ -82,7 +82,7 @@ describe Utils::Shell do
   describe "::prepend_path_in_profile" do
     let(:path) { "/my/path" }
 
-    it "supports Tcsh" do
+    it "supports tcsh" do
       ENV["SHELL"] = "/bin/tcsh"
       expect(described_class.prepend_path_in_profile(path))
         .to eq("echo 'setenv PATH #{path}:$PATH' >> #{shell_profile}")
@@ -94,11 +94,11 @@ describe Utils::Shell do
         .to eq("echo 'export PATH=\"#{path}:$PATH\"' >> #{shell_profile}")
     end
 
-    it "supports Fish" do
+    it "supports fish" do
       ENV["SHELL"] = "/usr/local/bin/fish"
       ENV["fish_user_paths"] = "/some/path"
       expect(described_class.prepend_path_in_profile(path))
-        .to eq("echo 'set -g fish_user_paths \"#{path}\" $fish_user_paths' >> #{shell_profile}")
+        .to eq("echo 'fish_add_path #{path}' >> #{shell_profile}")
     end
   end
 end

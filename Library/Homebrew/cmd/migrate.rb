@@ -19,6 +19,8 @@ module Homebrew
       switch "-f", "--force",
              description: "Treat installed <formula> and provided <formula> as if they are from "\
                           "the same taps and migrate them anyway."
+      switch "-n", "--dry-run",
+             description: "Show what would be migrated, but do not actually migrate anything."
 
       named_args :installed_formula, min: 1
     end
@@ -31,11 +33,11 @@ module Homebrew
       if f.oldname
         rack = HOMEBREW_CELLAR/f.oldname
         raise NoSuchKegError, f.oldname if !rack.exist? || rack.subdirs.empty?
-        raise "#{rack} is a symlink" if rack.symlink?
+
+        odie "#{rack} is a symlink" if rack.symlink?
       end
 
-      migrator = Migrator.new(f, force: args.force?)
-      migrator.migrate
+      Migrator.migrate_if_needed(f, force: args.force?, dry_run: args.dry_run?)
     end
   end
 end
