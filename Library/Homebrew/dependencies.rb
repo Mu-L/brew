@@ -1,11 +1,9 @@
-# typed: true
+# typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
 require "delegate"
 
 # A collection of dependencies.
-#
-# @api private
 class Dependencies < SimpleDelegator
   def initialize(*args)
     super(args)
@@ -44,8 +42,6 @@ class Dependencies < SimpleDelegator
 end
 
 # A collection of requirements.
-#
-# @api private
 class Requirements < SimpleDelegator
   def initialize(*args)
     super(Set.new(args))

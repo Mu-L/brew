@@ -1,8 +1,12 @@
+---
+last_review_date: "1970-01-01"
+---
+
 # Tips and Tricks
 
 ## Install previous versions of formulae
 
-Some formulae in `homebrew/core` are made available as [versioned formulae](Versions.md) using a special naming format, e.g. `gcc@7`. If the version you're looking for isn't available, consider using `brew extract`.
+Some formulae in `homebrew/core` are made available as [versioned formulae](Versions.md) using a special naming format, e.g. `gcc@9`. If the version you're looking for isn't available, consider using `brew extract`.
 
 ## Quickly remove something from Homebrew's prefix
 
@@ -120,4 +124,30 @@ If you're using Homebrew on macOS Intel, you should also fix permissions afterwa
 
 ```sh
 sudo chown -R "${USER}" /usr/local/etc
+```
+
+## Use a caching proxy or mirror for Homebrew bottles
+
+You can configure Homebrew to retrieve bottles from a caching proxy or mirror.
+
+For example, in JFrog's Artifactory, accessible at `https://artifacts.example.com`,
+configure a new "remote" repository with `homebrew` as the "repository key" and `https://ghcr.io` as the URL.
+
+Then, set these environment variables for Homebrew to retrieve from the caching proxy.
+
+```sh
+export HOMEBREW_ARTIFACT_DOMAIN=https://artifacts.example.com/artifactory/homebrew/
+export HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK=1
+export HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN="$(printf 'anonymous:' | base64)"
+```
+
+## Loading Homebrew from the same dotfiles on different operating systems
+
+Some users may want to use the same shell initialization files on macOS and Linux.
+Use this to detect the likely Homebrew installation directory and load Homebrew when it's found.
+You may need to adapt this to your particular shell or other particulars of your environment.
+
+```sh
+command -v brew || export PATH="/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin"
+command -v brew && eval "$(brew shellenv)"
 ```

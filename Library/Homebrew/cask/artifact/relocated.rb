@@ -1,4 +1,4 @@
-# typed: true
+# typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
 require "cask/artifact/abstract_artifact"
@@ -7,8 +7,6 @@ require "extend/hash/keys"
 module Cask
   module Artifact
     # Superclass for all artifacts which have a source and a target location.
-    #
-    # @api private
     class Relocated < AbstractArtifact
       def self.from_args(cask, *args)
         source_string, target_hash = args
@@ -40,7 +38,7 @@ module Cask
           .void
       }
       def initialize(cask, source, **target_hash)
-        super(cask, source, **target_hash)
+        super
 
         target = target_hash[:target]
         @source_string = source.to_s
@@ -74,6 +72,7 @@ module Cask
       private
 
       ALT_NAME_ATTRIBUTE = "com.apple.metadata:kMDItemAlternateNames"
+      private_constant :ALT_NAME_ATTRIBUTE
 
       # Try to make the asset searchable under the target name. Spotlight
       # respects this attribute for many filetypes, but ignores it for App
@@ -91,11 +90,14 @@ module Cask
         altnames = "(#{altnames})"
 
         # Some packages are shipped as u=rx (e.g. Bitcoin Core)
-        command.run!("/bin/chmod", args: ["--", "u+rw", file, file.realpath])
+        command.run!("/bin/chmod",
+                     args: ["--", "u+rw", file, file.realpath],
+                     sudo: !file.writable? || !file.realpath.writable?)
 
         command.run!("/usr/bin/xattr",
                      args:         ["-w", ALT_NAME_ATTRIBUTE, altnames, file],
-                     print_stderr: false)
+                     print_stderr: false,
+                     sudo:         !file.writable?)
       end
 
       def printable_target
