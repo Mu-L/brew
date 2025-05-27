@@ -57,25 +57,25 @@ GEM
     redcarpet (3.6.1)
     regexp_parser (2.10.0)
     rexml (3.4.1)
-    rspec (3.13.0)
+    rspec (3.13.1)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
       rspec-mocks (~> 3.13.0)
-    rspec-core (3.13.3)
+    rspec-core (3.13.4)
       rspec-support (~> 3.13.0)
-    rspec-expectations (3.13.4)
+    rspec-expectations (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-github (3.0.0)
       rspec-core (~> 3.0)
-    rspec-mocks (3.13.4)
+    rspec-mocks (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-retry (0.6.2)
       rspec-core (> 3.3)
     rspec-sorbet (1.9.2)
       sorbet-runtime
-    rspec-support (3.13.3)
+    rspec-support (3.13.4)
     rspec_junit_formatter (0.6.0)
       rspec-core (>= 2, < 4, != 2.12.0)
     rubocop (1.75.6)
@@ -162,7 +162,6 @@ GEM
 
 PLATFORMS
   aarch64-linux
-  arm-linux
   arm64-darwin
   x86_64-darwin
   x86_64-linux
